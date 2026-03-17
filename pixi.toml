@@ -1,0 +1,31 @@
+[workspace]
+name = "eurostat-analisis"
+version = "0.1.0"
+channels = ["conda-forge", "r"]
+platforms = ["linux-64", "win-64"]
+
+[tasks]
+
+[dependencies]
+# --- R Base and Data Engines ---
+r-base = ">=4.3,<4.4"
+"r-data.table" = "*"
+r-arrow = "*"
+r-eurostat = "*"
+
+# --- Tidyverse & Data Manipulation ---
+r-tidyverse = ">=2.0.0,<3"
+r-lubridate = "*"
+r-zoo = "*"
+r-purrr = "*"
+r-vroom = "*"
+
+# --- File Formats ---
+r-writexl = "*"
+
+# --- Visualization & Dashboards ---
+r-dt = "*"
+r-ggrepel = "*"
+r-patchwork = "*"
+r-scales = "*"
+r-sf = ">=1.0_20,<2"

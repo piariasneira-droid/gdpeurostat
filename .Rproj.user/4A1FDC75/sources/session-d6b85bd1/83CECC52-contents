@@ -1,0 +1,48 @@
+# Load environment ----
+library(data.table)
+library(readxl)
+library(tidyverse)
+
+source("./scr/aux/funcread.R")
+
+# Read data ----
+## Nuts metadata ----
+meta_nuts0 <- readxl::read_excel("./data/metadatos/nuts.xlsx", sheet = "NUTS 0")
+meta_nuts1 <- readxl::read_excel("./data/metadatos/nuts.xlsx", sheet = "NUTS 1")
+meta_nuts2 <- readxl::read_excel("./data/metadatos/nuts.xlsx", sheet = "NUTS 2")
+meta_nuts3 <- readxl::read_excel("./data/metadatos/nuts.xlsx", sheet = "NUTS3")
+
+## Population ----
+df_pop <- fetch_eurostat_csv(
+  "https://ec.europa.eu/eurostat/api/dissemination/sdmx/3.0/data/dataflow/ESTAT/demo_r_d2jan/1.0/*.*.*.*.*?format=csvdata&c[sex]=T&c[age]=TOTAL&c[TIME_PERIOD]=ge:2011&formatVersion=2.0&compress=false"
+) |>
+  select(geo, TIME_PERIOD, OBS_VALUE, OBS_FLAG) |>
+  rename(Geo = geo, Año = TIME_PERIOD, Valor = OBS_VALUE, Flag = OBS_FLAG) |>
+  mutate(Variable = "Población") |>
+  select(Variable, Año, Geo, Valor, Flag)
+
+## Surface ----
+df_sur <- fetch_eurostat_csv(
+  "https://ec.europa.eu/eurostat/api/dissemination/sdmx/3.0/data/dataflow/ESTAT/demo_r_d3area/1.0/*.*.*.*?format=csvdata&c[landuse]=TOTAL&c[TIME_PERIOD]=ge:2011&formatVersion=2.0&compress=false"
+) |>
+  select(geo, TIME_PERIOD, OBS_VALUE, OBS_FLAG) |>
+  rename(Geo = geo, Año = TIME_PERIOD, Valor = OBS_VALUE, Flag = OBS_FLAG) |>
+  mutate(Variable = "Superficie") |>
+  select(Variable, Año, Geo, Valor, Flag)
+
+## Density ----
+df_den <- fetch_eurostat_csv(
+  "https://ec.europa.eu/eurostat/api/dissemination/sdmx/3.0/data/dataflow/ESTAT/demo_r_d3dens/1.0/*.*.*?format=csvdata&c[TIME_PERIOD]=ge:2011&formatVersion=2.0&compress=false"
+) |>
+  select(geo, TIME_PERIOD, OBS_VALUE, OBS_FLAG) |>
+  rename(Geo = geo, Año = TIME_PERIOD, Valor = OBS_VALUE, Flag = OBS_FLAG) |>
+  mutate(Variable = "Densidad") |>
+  select(Variable, Año, Geo, Valor, Flag)
+
+## GDP ----
+df_gdp <- fetch_eurostat_csv(
+  "https://ec.europa.eu/eurostat/api/dissemination/sdmx/3.0/data/dataflow/ESTAT/nama_10r_2gdp/1.0/*.*.*?format=csvdata&c[unit]=MIO_EUR,EUR_HAB,MIO_PPS_EU27_2020,PPS_EU27_2020_HAB,PPS_HAB_EU27_2020&c[TIME_PERIOD]=ge:2011&formatVersion=2.0&compress=false"
+) |>
+  select(unit, geo, TIME_PERIOD, OBS_VALUE, OBS_FLAG) |>
+  rename(Variable = unit, Geo = geo, Año = TIME_PERIOD, Valor = OBS_VALUE, Flag = OBS_FLAG) |>
+  select(Variable, Año, Geo, Valor, Flag)

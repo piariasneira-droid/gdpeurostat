@@ -1,3 +1,9 @@
+# Environment ----
 setwd("~/Documentos/comercio_exterior_bienes")
 Sys.setenv(R_HOME = "/home/pivan/Documentos/comercio_exterior_bienes/.pixi/envs/default/lib/R")
 .libPaths("~/Documentos/comercio_exterior_bienes/.pixi/envs/default/lib/R/library")
+
+# Libraries ----
+library(readr)
+library(dplyr)
+library(writexl)

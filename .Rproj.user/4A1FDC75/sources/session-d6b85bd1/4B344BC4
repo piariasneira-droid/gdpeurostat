@@ -3,7 +3,7 @@
     "path": "~/Documentos/pibeurostat/.Rprofile",
     "project_path": ".Rprofile",
     "type": "r_source",
-    "hash": "0",
+    "hash": "4266963103",
     "contents": "",
     "dirty": false,
     "created": 1773739898714.0,
@@ -16,11 +16,11 @@
         "scrollLine": "0"
     },
     "folds": "",
-    "lastKnownWriteTime": 1773740017,
+    "lastKnownWriteTime": 1773752684,
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1773740017949,
+    "last_content_update": 1773752684137,
     "read_only": false,
     "read_only_alternatives": []
 }

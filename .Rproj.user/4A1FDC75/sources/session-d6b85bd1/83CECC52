@@ -1,0 +1,27 @@
+{
+    "id": "83CECC52",
+    "path": "~/Documentos/pibeurostat/scr/read_data.R",
+    "project_path": "scr/read_data.R",
+    "type": "r_source",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1773740337462.0,
+    "source_on_save": false,
+    "relative_order": 2,
+    "properties": {
+        "tempName": "Untitled1",
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "42,0",
+        "scrollLine": "20"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1773753034,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1773753034114,
+    "read_only": false,
+    "read_only_alternatives": []
+}

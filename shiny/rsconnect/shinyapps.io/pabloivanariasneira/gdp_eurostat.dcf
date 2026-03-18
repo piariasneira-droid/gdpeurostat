@@ -1,0 +1,10 @@
+name: gdp_eurostat
+title: gdp_eurostat
+username: pabloivanariasneira
+account: pabloivanariasneira
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 16929580
+bundleId: 11726698
+url: https://pabloivanariasneira.shinyapps.io/gdp_eurostat/
+version: 1

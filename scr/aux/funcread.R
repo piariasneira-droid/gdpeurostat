@@ -1,13 +1,17 @@
 fetch_eurostat_csv <- function(url) {
-  readr::read_csv(url, show_col_types = FALSE, locale = readr::locale(decimal_mark = "."))
+  dt <- readr::read_csv(url, show_col_types = FALSE, locale = readr::locale(decimal_mark = "."))
+  data.table::setDT(dt)
+  return(dt)
 }
+
+read_sheet_dt <- function(p, s) dat.table::setDT(readxl::read_xlsx(p, sheet = s))
 
 read_meta <- function(path) {
   list(
-    nuts0 = readxl::read_xlsx(path, sheet = "NUTS 0"),
-    nuts1 = readxl::read_xlsx(path, sheet = "NUTS 1"),
-    nuts2 = readxl::read_xlsx(path, sheet = "NUTS 2"),
-    nuts3 = readxl::read_xlsx(path, sheet = "NUTS3")
+    nuts0 = read_sheet_dt(path, "NUTS 0"),
+    nuts1 = read_sheet_dt(path, "NUTS 1"),
+    nuts2 = read_sheet_dt(path, "NUTS 2"),
+    nuts3 = read_sheet_dt(path, "NUTS3")
   )
 }
 

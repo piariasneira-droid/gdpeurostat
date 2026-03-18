@@ -1,0 +1,35 @@
+.
+├── data
+│   ├── metadatos
+│   │   ├── nuts.xlsx
+│   │   └── paises.xlsx
+│   └── output
+│       └── gdp_eurostat_nuts2+0.parquet
+├── output
+│   └── dispersion_eu_nuts2_animated.gif
+├── pibeurostat.Rproj
+├── pixi.lock
+├── pixi.toml
+├── rstudio-pixi.sh
+├── scr
+│   ├── animated_dispersion.R
+│   ├── aux
+│   │   └── funcread.R
+│   ├── parameters.R
+│   └── read_data.R
+├── shiny
+│   ├── app.R
+│   ├── data
+│   │   └── gdp_eurostat_nuts2+0.parquet
+│   ├── global.R
+│   ├── plots_plotly.R
+│   ├── pruebas.R
+│   ├── rsconnect
+│   │   └── shinyapps.io
+│   │       └── pabloivanariasneira
+│   │           └── gdp_eurostat.dcf
+│   ├── server.R
+│   └── ui.R
+└── tree.txt
+
+12 directories, 21 files

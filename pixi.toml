@@ -5,13 +5,20 @@ channels = ["conda-forge", "r"]
 platforms = ["linux-64", "win-64"]
 
 [tasks]
+shiny = "Rscript -e 'shiny::runApp(\"shiny\")'"
+deploy = "Rscript -e 'rsconnect::deployApp(appDir = \"shiny\", appName = \"gdp_eurostat\", forceUpdate = TRUE)'"
 
 [dependencies]
-# --- R Base and Data Engines ---
+# --- R Base and System Glue ---
 r-base = ">=4.3,<4.4"
+r-units = "*"        
+r-memoise = "*"      
+
+# --- Data Engines & Eurostat ---
 "r-data.table" = "*"
 r-arrow = "*"
 r-eurostat = "*"
+r-giscor = "*"       
 
 # --- Tidyverse & Data Manipulation ---
 r-tidyverse = ">=2.0.0,<3"
@@ -25,8 +32,25 @@ r-readxl = "*"
 r-writexl = "*"
 
 # --- Visualization & Dashboards ---
+r-shiny = "*"
+r-plotly = "*"
 r-dt = "*"
 r-ggrepel = "*"
 r-patchwork = "*"
 r-scales = "*"
+r-gganimate = "*"
+
+# --- UI/UX Enhancements ---
+r-bslib = "*"
+r-bsicons = "*"             
+r-shinywidgets = "*"      
+r-shinycssloaders = "*"   
+r-htmlwidgets = "*"   
+r-gifski = "*"    
+
+# --- Spatial Data ---
 r-sf = ">=1.0_20,<2"
+
+# --- Reproducibilidad y Deployment ---
+r-packrat = "*"
+r-rsconnect = "*"

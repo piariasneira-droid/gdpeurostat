@@ -2,3 +2,6 @@
 .Rhistory
 .Rdata
 data/
+.Rproj.user
+output/
+shiny/data

@@ -1,11 +1,4 @@
 # plots_plotly.R ----
-
-# plot_eu_nuts2_scatter() ----
-# Scatter: total GDP (x) vs GDP per capita (y) for all EU NUTS2 regions.
-# Selected country rendered in its viridis colour; all others in grey.
-# Capital regions use a square marker; all others use a circle – for ALL countries.
-# Two horizontal reference lines on the Y axis: EU27 average and country average.
-
 plot_eu_nuts2_scatter <- function(df_plot,
                                   list_country,
                                   list_eu,
@@ -14,37 +7,34 @@ plot_eu_nuts2_scatter <- function(df_plot,
                                   vary,
                                   year,
                                   label_x = varx,
-                                  label_y = vary) {
+                                  label_y = vary,
+                                  p       = list()) {
+  
+  col_other   <- p$col_other
+  col_eu_line <- p$col_eu_line
+  col_country <- p$col_country
+  col_accent  <- p$col_accent
   
   # Validate required columns ----
   req_cols <- c("code", "name", "namelat", "capital", varx, vary, "country")
   missing  <- setdiff(req_cols, names(df_plot))
   if (length(missing)) stop("Missing columns: ", paste(missing, collapse = ", "))
   
-  # Country colour ----
-  country_col <- COUNTRY_COLOURS[selected_country]
-  if (is.na(country_col)) country_col <- "#526DB0"
-  
   # Reverse COUNTRIES lookup: ISO code -> English name ----
-  country_names <- setNames(names(COUNTRIES), COUNTRIES)
-  
-  # Add English country name column ----
+  country_names        <- setNames(names(COUNTRIES), COUNTRIES)
   df_plot$country_name <- country_names[df_plot$country]
   
   # Split data ----
-  # Other EU: split by capital flag
   df_other       <- df_plot[df_plot$country != selected_country, ]
   df_other_cap   <- df_other[df_other$capital == "Sí", ]
   df_other_nocap <- df_other[df_other$capital != "Sí", ]
   
-  # Selected country: split by capital flag
   df_country <- df_plot[df_plot$country == selected_country, ]
   df_cap     <- df_country[df_country$capital == "Sí", ]
   df_nocap   <- df_country[df_country$capital != "Sí", ]
   
   # Axis ranges for reference lines ----
   x_range <- range(df_plot[[varx]], na.rm = TRUE)
-  y_range <- range(df_plot[[vary]], na.rm = TRUE)
   
   # Hover tooltip ----
   make_hover <- function(d) {
@@ -52,14 +42,14 @@ plot_eu_nuts2_scatter <- function(df_plot,
       "<b>", d$name, "</b> (", d$code, ") [", d$namelat, "]<br>",
       "Country: ", d$country_name, "<br>",
       label_x, ": ", formatC(d[[varx]], format = "fg", big.mark = ","), "<br>",
-      label_y, ": ", formatC(d[[vary]], format = "fg", big.mark = ",")
+      "Ranking ", label_x, ": ", d$rankx, "<br>",
+      label_y, ": ", formatC(d[[vary]], format = "fg", big.mark = ","), "<br>",
+      "Ranking ", label_y, ": ", d$ranky
     )
   }
   
-  # Plot layers ----
   fig <- plot_ly()
-  
-  # Layer 1: other EU regions – non-capitals (grey circles) ----
+  # Layer 1: other EU regions – non-capitals ----
   if (nrow(df_other_nocap) > 0) {
     fig <- fig %>%
       add_trace(
@@ -69,20 +59,21 @@ plot_eu_nuts2_scatter <- function(df_plot,
         type       = "scatter",
         mode       = "markers",
         name       = "Other EU regions",
+        legendrank = 4,
         marker     = list(
-          color   = COL_OTHER,
+          color   = col_other,
           size    = 7,
           symbol  = "circle",
-          opacity = 0.6,
-          line    = list(width = 0.4, color = "white")
+          opacity = 1,
+          line    = list(width = 0.4, color = col_other)
         ),
         text       = make_hover(df_other_nocap),
         hoverinfo  = "text",
-        hoverlabel = list(bgcolor = "#555", font = list(color = "white", size = 11))
+        hoverlabel = list(bgcolor = col_other, font = list(color = "white", size = 11))
       )
   }
   
-  # Layer 2: other EU regions – capitals (grey squares) ----
+  # Layer 2: other EU regions – capitals ----
   if (nrow(df_other_cap) > 0) {
     fig <- fig %>%
       add_trace(
@@ -92,20 +83,21 @@ plot_eu_nuts2_scatter <- function(df_plot,
         type       = "scatter",
         mode       = "markers",
         name       = "Other EU capitals",
+        legendrank = 3,
         marker     = list(
-          color   = COL_OTHER,
-          size    = 9,
-          symbol  = "square",
-          opacity = 0.8,
-          line    = list(width = 0.6, color = "white")
+          color   = col_accent,
+          size    = 7,
+          symbol  = "circle",
+          opacity = 1,
+          line    = list(width = 0.4, color = col_accent)
         ),
         text       = make_hover(df_other_cap),
         hoverinfo  = "text",
-        hoverlabel = list(bgcolor = "#555", font = list(color = "white", size = 11))
+        hoverlabel = list(bgcolor = col_other, font = list(color = "white", size = 11))
       )
   }
   
-  # Layer 3: selected country non-capital regions (coloured circles) ----
+  # Layer 3: selected country – non-capitals ----
   if (nrow(df_nocap) > 0) {
     fig <- fig %>%
       add_trace(
@@ -114,21 +106,22 @@ plot_eu_nuts2_scatter <- function(df_plot,
         y          = df_nocap[[vary]],
         type       = "scatter",
         mode       = "markers",
-        name       = paste0(selected_country, " regions"),
+        name       = paste0("Other ",selected_country, " regions"),
+        legendrank = 2,
         marker     = list(
-          color   = country_col,
-          size    = 9,
+          color   = col_country,
+          size    = 7,
           symbol  = "circle",
-          opacity = 0.9,
-          line    = list(width = 0.6, color = "white")
+          opacity = 1,
+          line    = list(width = 0.4, color = col_country)
         ),
         text       = make_hover(df_nocap),
         hoverinfo  = "text",
-        hoverlabel = list(bgcolor = country_col, font = list(color = "white", size = 11))
+        hoverlabel = list(bgcolor = col_country, font = list(color = "white", size = 11))
       )
   }
   
-  # Layer 4: selected country capital region (coloured square) ----
+  # Layer 4: selected country – capital ----
   if (nrow(df_cap) > 0) {
     fig <- fig %>%
       add_trace(
@@ -137,61 +130,19 @@ plot_eu_nuts2_scatter <- function(df_plot,
         y          = df_cap[[vary]],
         type       = "scatter",
         mode       = "markers",
-        name       = paste0(selected_country, " capital"),
+        name = paste0(selected_country, " Capital (", df_cap$code, ")"),
+        legendrank = 1,
         marker     = list(
-          color   = country_col,
-          size    = 11,
+          color   = col_country,
+          size    = 9,
           symbol  = "square",
           opacity = 1,
-          line    = list(width = 1.2, color = "white")
+          line    = list(width = 0.6, color = col_country)
         ),
         text       = make_hover(df_cap),
         hoverinfo  = "text",
-        hoverlabel = list(bgcolor = country_col, font = list(color = "white", size = 11))
+        hoverlabel = list(bgcolor = col_country, font = list(color = "white", size = 11))
       )
-  }
-  
-  # Horizontal reference lines (Y axis only) ----
-  shapes      <- list()
-  annotations <- list()
-  
-  eu_y <- list_eu[[vary]]
-  ct_y <- list_country[[vary]]
-  
-  # EU27 average ----
-  if (!is.null(eu_y) && !is.na(eu_y)) {
-    shapes <- c(shapes, list(list(
-      type  = "line",
-      x0 = x_range[1], x1 = x_range[2],
-      y0 = eu_y, y1 = eu_y,
-      line  = list(color = COL_EU_LINE, width = 1.5, dash = "dot"),
-      layer = "below"
-    )))
-    annotations <- c(annotations, list(list(
-      x = x_range[2], y = eu_y,
-      text      = paste0("EU avg: ", formatC(eu_y, format = "fg", big.mark = ",")),
-      showarrow = FALSE, xanchor = "right", yanchor = "bottom",
-      font      = list(color = COL_EU_LINE, size = 10),
-      bgcolor   = "rgba(255,255,255,0.7)"
-    )))
-  }
-  
-  # Selected country average ----
-  if (!is.null(ct_y) && !is.na(ct_y)) {
-    shapes <- c(shapes, list(list(
-      type  = "line",
-      x0 = x_range[1], x1 = x_range[2],
-      y0 = ct_y, y1 = ct_y,
-      line  = list(color = country_col, width = 1.5, dash = "dash"),
-      layer = "below"
-    )))
-    annotations <- c(annotations, list(list(
-      x = x_range[1], y = ct_y,
-      text      = paste0(selected_country, " avg: ", formatC(ct_y, format = "fg", big.mark = ",")),
-      showarrow = FALSE, xanchor = "left", yanchor = "top",
-      font      = list(color = country_col, size = 10),
-      bgcolor   = "rgba(255,255,255,0.7)"
-    )))
   }
   
   # Layout ----
@@ -220,21 +171,19 @@ plot_eu_nuts2_scatter <- function(df_plot,
       ),
       legend = list(
         orientation = "h",
-        x = 0, y = -0.15,
-        xanchor = "left", yanchor = "top",
-        bgcolor     = "rgba(255,255,255,0.7)",
-        bordercolor = "#ddd", borderwidth = 1,
+        x = 1, y = -0.15,
+        xanchor = "right", yanchor = "top",
+        bgcolor     = "rgba(255,255,255, 1)",
+        borderwidth = 0,
         font        = list(size = 12)
       ),
-      shapes      = shapes,
-      annotations = annotations,
       margin      = list(l = 60, r = 20, t = 70, b = 110, pad = 4),
       autosize    = TRUE,
       hovermode   = "closest"
     ) %>%
     config(
       responsive             = TRUE,
-      displayModeBar         = TRUE,
+      displayModeBar         = FALSE,
       modeBarButtonsToRemove = list("lasso2d", "select2d"),
       displaylogo            = FALSE
     )

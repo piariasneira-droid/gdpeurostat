@@ -1,45 +1,162 @@
-# Environment ----
+# pruebas.R ----
+
 library(arrow)
 library(tidyverse)
-library(bsicons)
+library(plotly)
+library(DT)
+
+source("./shiny/plots_plotly.R")
+country_names <- setNames(names(COUNTRIES), COUNTRIES)
+
+# Constants ----
+
+COUNTRIES <- c(
+  "Germany"     = "DE", "Italy"       = "IT", "France"      = "FR",
+  "Poland"      = "PL", "Belgium"     = "BE", "Bulgaria"    = "BG",
+  "Greece"      = "EL", "Czechia"     = "CZ", "Denmark"     = "DK",
+  "Estonia"     = "EE", "Ireland"     = "IE", "Spain"       = "ES",
+  "Croatia"     = "HR", "Cyprus"      = "CY", "Latvia"      = "LV",
+  "Lithuania"   = "LT", "Luxembourg"  = "LU", "Hungary"     = "HU",
+  "Malta"       = "MT", "Netherlands" = "NL", "Austria"     = "AT",
+  "Portugal"    = "PT", "Romania"     = "RO", "Slovenia"    = "SI",
+  "Slovakia"    = "SK", "Finland"     = "FI", "Sweden"      = "SE"
+)
+
+VARS_X <- c(
+  "GDP (millions EUR)"      = "MIO_EUR",
+  "GDP (millions PPS 2020)" = "MIO_PPS_EU27_2020"
+)
+
+VARS_Y <- c(
+  "GDP per capita (EUR)"          = "EUR_HAB",
+  "GDP per capita (PPS 2020)"     = "PPS_EU27_2020_HAB",
+  "GDP per capita index (EU=100)" = "PPS_HAB_EU27_2020"
+)
+
+# Parameters ----
+
+country <- "ES"
+year    <- 2024L
+varx    <- "MIO_PPS_EU27_2020"
+vary    <- "PPS_HAB_EU27_2020"
+
+x_label <- names(VARS_X)[VARS_X == varx]
+y_label <- names(VARS_Y)[VARS_Y == vary]
+
+para <- list(
+  col_other   = "#526DB0",
+  col_eu_line = "#7A7A7A",
+  col_country = "#FCC201",
+  col_accent  = "#A0B8C8"
+)
+
+# Load data ----
 
 ds <- open_dataset("./data/output/gdp_eurostat_nuts2+0.parquet")
-country <- "ES"
-year <- 2024L
-varx <- "MIO_PPS_EU27_2020"
-vary <- "PPS_HAB_EU27_2020"
 
 df_plot <- ds %>%
   filter(
-    ano == !!year,
-    var %in% !!c(varx, vary),
+    ano    == !!year,
+    var    %in% !!c(varx, vary),
     nombre != "Extra-Regio NUTS 2",
-    level == 2L
-  ) %>% 
+    level  == 2L
+  ) %>%
   collect() %>%
   pivot_wider(names_from = var, values_from = valor) %>%
-  mutate(
-    country = substr(code, 1, 2)
-  )
+  mutate(country = substr(code, 1, 2),
+         rankx   = rank(-get(varx), na.last = "keep", ties.method = "min"),
+         ranky   = rank(-get(vary), na.last = "keep", ties.method = "min")
+         )
 
 list_country <- ds %>%
   filter(
-    ano == !!year,
-    var %in% !!c(varx, vary),
+    ano  == !!year,
+    var  %in% !!c(varx, vary),
     code == !!country
   ) %>%
   collect() %>%
   pivot_wider(names_from = var, values_from = valor) %>%
-  select(!!varx, !!vary) %>%
+  select(all_of(c(varx, vary))) %>%
   as.list()
 
 list_eu <- ds %>%
   filter(
-    ano == !!year,
-    var %in% !!c(varx, vary),
+    ano  == !!year,
+    var  %in% !!c(varx, vary),
     code == "EU27_2020"
   ) %>%
   collect() %>%
   pivot_wider(names_from = var, values_from = valor) %>%
-  select(!!varx, !!vary) %>%
+  select(all_of(c(varx, vary))) %>%
   as.list()
+
+# Scatter plot ----
+fig <- plot_eu_nuts2_scatter(
+  df_plot          = df_plot,
+  list_country     = list_country,
+  list_eu          = list_eu,
+  selected_country = country,
+  varx             = varx,
+  vary             = vary,
+  year             = year,
+  label_x          = x_label,
+  label_y          = y_label,
+  p                = para
+)
+
+# Data table ----
+
+df_tbl <- df_plot %>%
+  mutate(country_name = country_names[country]) %>%
+  select(
+    Code    = code,
+    Region  = nombre,
+    Country = country_name,
+    Capital = capital,
+    Year    = ano,
+    all_of(setNames(c(varx, vary), c(x_label, y_label)))
+  ) %>%
+  arrange(Country, desc(.data[[y_label]]))
+
+dt <- datatable(
+  df_tbl,
+  rownames   = FALSE,
+  filter     = "top",
+  class      = "display", 
+  extensions = "Buttons",
+  options    = list(
+    pageLength = 15,
+    scrollX    = TRUE,
+    dom        = "Bfrtip",
+    buttons    = list("csv", "excel"),
+    columnDefs = list(
+      list(className = "dt-center", targets = c(0, 2, 3, 4))
+    ),
+    # Styling Buttons and Pagination
+    initComplete = JS(paste0("
+      function(settings, json) {
+        $(this.api().table().container()).find('.dt-button').css({
+          'background': '", PARA$col_accent, "',
+          'color': 'white',
+          'border': 'none'
+        });
+      }
+    "))
+  )
+) %>%
+  formatRound(columns = x_label, digits = 0) %>%
+  formatRound(columns = y_label, digits = 1) %>%
+  # Corrected Alternating Row logic:
+  formatStyle(
+    0, # Target the row index
+    target = "row",
+    backgroundColor = JS("value % 2 === 0 ? '#F8F8F8' : 'white'")
+  ) %>%
+  # Y-variable bar fill using PARA$col_other
+  formatStyle(
+    columns            = y_label,
+    background         = styleColorBar(df_tbl[[y_label]], PARA$col_other),
+    backgroundSize     = "100% 90%",
+    backgroundRepeat   = "no-repeat",
+    backgroundPosition = "center"
+  )

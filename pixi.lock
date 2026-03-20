@@ -294,6 +294,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/r-sys-3.4.3-r43h2b5f3a1_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/r-systemfonts-1.2.3-r43h74f4acd_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/r-textshaping-1.0.1-r43h16f7c1a_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/r-this.path-2.7.0-r43h2b5f3a1_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/r-tibble-3.3.0-r43h2b5f3a1_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/r-tidyr-1.3.1-r43h0d4f4ea_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/r-tidyselect-1.2.1-r43hc72bb7e_1.conda
@@ -611,6 +612,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/r-sys-3.4.3-r43h11b023d_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/r-systemfonts-1.2.3-r43h295cb35_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/r-textshaping-1.0.1-r43h649cef6_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/win-64/r-this.path-2.7.0-r43h11b023d_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/r-tibble-3.3.0-r43h11b023d_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/r-tidyr-1.3.1-r43h8ae3a7c_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/r-tidyselect-1.2.1-r43hc72bb7e_1.conda
@@ -7154,6 +7156,29 @@ packages:
   license_family: MIT
   size: 1066699
   timestamp: 1746097543790
+- conda: https://conda.anaconda.org/conda-forge/linux-64/r-this.path-2.7.0-r43h2b5f3a1_0.conda
+  sha256: ff0886933146bddcbbc13256eb69d445d1d8df88ea59c4e5ffcae65a05816d4e
+  md5: 31bd8f965b0db99cdca1546d434034f5
+  depends:
+  - __glibc >=2.17,<3.0.a0
+  - libgcc >=13
+  - r-base >=4.3,<4.4.0a0
+  license: MIT
+  license_family: MIT
+  size: 479524
+  timestamp: 1744287238969
+- conda: https://conda.anaconda.org/conda-forge/win-64/r-this.path-2.7.0-r43h11b023d_0.conda
+  sha256: 87083bef77b941f53ba7e9aee8fab81fc563d842dc5ae38b5627d7b5e2dca78e
+  md5: 9e6b96ce6b073fae32d319da565ba988
+  depends:
+  - libgcc >=13
+  - libwinpthread >=12.0.0.r4.gg4f2fc60ca
+  - r-base >=4.3,<4.4.0a0
+  - ucrt >=10.0.20348.0
+  license: MIT
+  license_family: MIT
+  size: 476192
+  timestamp: 1744287618364
 - conda: https://conda.anaconda.org/conda-forge/linux-64/r-tibble-3.3.0-r43h2b5f3a1_0.conda
   sha256: fff2641f31b314a5d1c5f71e2ec36eb2b8e808e0376d5fc3c4db836230ef717e
   md5: e12f4dc87c2ab21d2e4384cbf8f42111

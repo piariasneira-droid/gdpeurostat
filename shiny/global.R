@@ -9,7 +9,7 @@ library(tidyverse)
 library(data.table)
 library(DT)
 
-source("./plots_plotly.R")
+source("./fun/plots_plotly.R")
 
 # Data ----
 ds <- open_dataset("./data/gdp_eurostat_nuts2+0.parquet")
@@ -17,7 +17,7 @@ ds <- open_dataset("./data/gdp_eurostat_nuts2+0.parquet")
 # Constants ----
 YEAR_MIN <- 2011L
 YEAR_MAX <- 2024L
-
+ 
 VARS_X <- c(
   "GDP (millions EUR)"      = "MIO_EUR",
   "GDP (millions PPS 2020)" = "MIO_PPS_EU27_2020"

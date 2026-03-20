@@ -12,7 +12,8 @@ deploy = "Rscript -e 'rsconnect::deployApp(appDir = \"shiny\", appName = \"gdp_e
 # --- R Base and System Glue ---
 r-base = ">=4.3,<4.4"
 r-units = "*"        
-r-memoise = "*"      
+r-memoise = "*"
+"r-this.path" = "*"      
 
 # --- Data Engines & Eurostat ---
 "r-data.table" = "*"
@@ -51,6 +52,6 @@ r-gifski = "*"
 # --- Spatial Data ---
 r-sf = ">=1.0_20,<2"
 
-# --- Reproducibilidad y Deployment ---
+# --- Deployment ---
 r-packrat = "*"
 r-rsconnect = "*"

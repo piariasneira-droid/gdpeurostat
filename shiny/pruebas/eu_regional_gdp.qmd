@@ -1,0 +1,807 @@
+---
+title: "EU Regional GDP"
+format:
+  html:
+    self-contained: true
+    page-layout: full
+    theme: flatly
+    toc: false
+    echo: false
+    warning: false
+    message: false
+    include-in-header:
+      text: |
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+        <style>
+          body, html { font-family: 'Inter', sans-serif; background-color: #ffffff; }
+
+          /* Header */
+          .app-header {
+            background-color: #526DB0;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+            margin-bottom: 16px;
+          }
+          .app-header h1 {
+            color: white;
+            padding: 12px 16px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            text-align: center;
+            margin: 0;
+          }
+
+          /* Tabs */
+          .nav-tabs {
+            background-color: #526DB0;
+            padding: 0 16px;
+            border-bottom: none;
+            margin-bottom: 0;
+            border-radius: 0;
+          }
+          .nav-tabs .nav-link {
+            color: rgba(255,255,255,0.75);
+            border: none; border-radius: 0;
+            padding: 10px 16px;
+          }
+          .nav-tabs .nav-link.active {
+            color: #FCC201;
+            background-color: transparent;
+            border-bottom: 3px solid #FCC201;
+            border-top: none; border-left: none; border-right: none;
+          }
+          .nav-tabs .nav-link:hover { color: #FCC201; }
+          .tab-content { background-color: #ffffff; padding-top: 16px; }
+
+          /* Controls card */
+          .controls-card {
+            background: #F8F8F8;
+            border: 1px solid #A0B8C8;
+            border-radius: 8px;
+            padding: 10px 16px;
+            margin-bottom: 16px;
+          }
+          .controls-row {
+            display: flex;
+            align-items: flex-end;
+            gap: 12px;
+            flex-wrap: wrap;
+          }
+          .controls-row > div { flex: 1; min-width: 150px; margin-bottom: 0; }
+          .controls-row label { font-size: 0.8rem; font-weight: 600; margin-bottom: 4px; display: block; }
+          .controls-row select, .controls-row input[type=range] { width: 100%; }
+          .slider-row { margin-top: 10px; }
+
+          /* Value boxes */
+          .vboxes-row {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+          }
+          .vbox {
+            flex: 1;
+            min-width: 150px;
+            border-radius: 8px;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+          }
+          .vbox-icon { font-size: 1.6rem; opacity: 0.85; }
+          .vbox-content { display: flex; flex-direction: column; }
+          .vbox-title { font-size: 0.75rem; font-weight: 600; margin-bottom: 2px; }
+          .vbox-value { font-size: 1.1rem; font-weight: 700; }
+
+          /* Cards */
+          .plot-card, .table-card {
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            overflow: hidden;
+          }
+          .card-header-custom {
+            background: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+            padding: 8px 16px;
+            font-weight: 600;
+            font-size: 0.9rem;
+          }
+          .card-body-custom { padding: 8px; }
+
+          /* Year slider styling */
+          input[type=range] { accent-color: #526DB0; }
+
+          /* DT buttons */
+          a.btn-dt {
+            background-color: #A0B8C8 !important;
+            border-color: #A0B8C8 !important;
+            color: white !important;
+            font-size: 0.8rem !important;
+          }
+
+          /* Selectize z-index fix */
+          .selectize-dropdown { z-index: 9999 !important; }
+        </style>
+---
+
+```{r setup}
+library(arrow)
+library(tidyverse)
+library(plotly)
+library(DT)
+library(htmltools)
+library(crosstalk)
+
+# ── Constants ────────────────────────────────────────────────────────────────
+
+YEAR_MIN <- 2011L
+YEAR_MAX <- 2024L
+
+VARS_X <- c(
+  "GDP (millions EUR)"      = "MIO_EUR",
+  "GDP (millions PPS 2020)" = "MIO_PPS_EU27_2020"
+)
+
+VARS_Y <- c(
+  "GDP per capita (EUR)"          = "EUR_HAB",
+  "GDP per capita (PPS 2020)"     = "PPS_EU27_2020_HAB",
+  "GDP per capita index (EU=100)" = "PPS_HAB_EU27_2020"
+)
+
+VARS_X_LABELS <- c(
+  "M€ nominal"  = "MIO_EUR",
+  "M€ PPS 2020" = "MIO_PPS_EU27_2020"
+)
+
+VARS_Y_LABELS <- c(
+  "€ p.c."       = "EUR_HAB",
+  "PPS p.c."     = "PPS_EU27_2020_HAB",
+  "Index EU=100" = "PPS_HAB_EU27_2020"
+)
+
+COUNTRIES <- c(
+  "Germany"     = "DE", "Italy"       = "IT", "France"      = "FR",
+  "Poland"      = "PL", "Belgium"     = "BE", "Bulgaria"    = "BG",
+  "Greece"      = "EL", "Czechia"     = "CZ", "Denmark"     = "DK",
+  "Estonia"     = "EE", "Ireland"     = "IE", "Spain"       = "ES",
+  "Croatia"     = "HR", "Cyprus"      = "CY", "Latvia"      = "LV",
+  "Lithuania"   = "LT", "Luxembourg"  = "LU", "Hungary"     = "HU",
+  "Malta"       = "MT", "Netherlands" = "NL", "Austria"     = "AT",
+  "Portugal"    = "PT", "Romania"     = "RO", "Slovenia"    = "SI",
+  "Slovakia"    = "SK", "Finland"     = "FI", "Sweden"      = "SE"
+)
+country_names <- setNames(names(COUNTRIES), COUNTRIES)
+
+PARA <- list(
+  col_other   = "#526DB0",
+  col_eu_line = "#7A7A7A",
+  col_country = "#FCC201",
+  col_accent  = "#A0B8C8",
+  col_accent2 = "#18bc9c"
+)
+
+# ── Scatter plot function ─────────────────────────────────────────────────────
+
+plot_eu_nuts2_scatter <- function(df_plot,
+                                  list_country,
+                                  list_eu,
+                                  selected_country,
+                                  varx,
+                                  vary,
+                                  year,
+                                  label_x = varx,
+                                  label_y = vary,
+                                  p       = list()) {
+  col_other   <- p$col_other
+  col_eu_line <- p$col_eu_line
+  col_country <- p$col_country
+  col_accent  <- p$col_accent
+
+  country_names        <- setNames(names(COUNTRIES), COUNTRIES)
+  df_plot$country_name <- country_names[df_plot$country]
+
+  df_other       <- df_plot[df_plot$country != selected_country, ]
+  df_other_cap   <- df_other[df_other$capital == "Sí", ]
+  df_other_nocap <- df_other[df_other$capital != "Sí", ]
+
+  df_country <- df_plot[df_plot$country == selected_country, ]
+  df_cap     <- df_country[df_country$capital == "Sí", ]
+  df_nocap   <- df_country[df_country$capital != "Sí", ]
+
+  make_hover <- function(d) {
+    paste0(
+      "<b>", d$name, "</b> (", d$code, ") [", d$namelat, "]<br>",
+      "Country: ", d$country_name, "<br>",
+      label_x, ": ", formatC(d[[varx]], format = "fg", big.mark = ","), "<br>",
+      "Ranking ", label_x, ": ", d$rankx, "<br>",
+      label_y, ": ", formatC(d[[vary]], format = "fg", big.mark = ","), "<br>",
+      "Ranking ", label_y, ": ", d$ranky
+    )
+  }
+
+  fig <- plot_ly()
+
+  if (nrow(df_other_nocap) > 0)
+    fig <- fig %>% add_trace(
+      data = df_other_nocap, x = df_other_nocap[[varx]], y = df_other_nocap[[vary]],
+      type = "scatter", mode = "markers", name = "Other EU regions", legendrank = 4,
+      marker = list(color = col_other, size = 7, symbol = "circle",
+                    opacity = 1, line = list(width = 0.4, color = col_other)),
+      text = make_hover(df_other_nocap), hoverinfo = "text",
+      hoverlabel = list(bgcolor = col_other, font = list(color = "white", size = 11))
+    )
+
+  if (nrow(df_other_cap) > 0)
+    fig <- fig %>% add_trace(
+      data = df_other_cap, x = df_other_cap[[varx]], y = df_other_cap[[vary]],
+      type = "scatter", mode = "markers", name = "Other EU capitals", legendrank = 3,
+      marker = list(color = col_accent, size = 7, symbol = "circle",
+                    opacity = 1, line = list(width = 0.4, color = col_accent)),
+      text = make_hover(df_other_cap), hoverinfo = "text",
+      hoverlabel = list(bgcolor = col_other, font = list(color = "white", size = 11))
+    )
+
+  if (nrow(df_nocap) > 0)
+    fig <- fig %>% add_trace(
+      data = df_nocap, x = df_nocap[[varx]], y = df_nocap[[vary]],
+      type = "scatter", mode = "markers",
+      name = paste0("Other ", selected_country, " regions"), legendrank = 2,
+      marker = list(color = col_country, size = 7, symbol = "circle",
+                    opacity = 1, line = list(width = 0.4, color = col_country)),
+      text = make_hover(df_nocap), hoverinfo = "text",
+      hoverlabel = list(bgcolor = col_country, font = list(color = "white", size = 11))
+    )
+
+  if (nrow(df_cap) > 0)
+    fig <- fig %>% add_trace(
+      data = df_cap, x = df_cap[[varx]], y = df_cap[[vary]],
+      type = "scatter", mode = "markers",
+      name = paste0(selected_country, " Capital (", df_cap$code, ")"), legendrank = 1,
+      marker = list(color = col_country, size = 9, symbol = "square",
+                    opacity = 1, line = list(width = 0.6, color = col_country)),
+      text = make_hover(df_cap), hoverinfo = "text",
+      hoverlabel = list(bgcolor = col_country, font = list(color = "white", size = 11))
+    )
+
+  fig %>%
+    layout(
+      plot_bgcolor  = "rgba(0,0,0,0)",
+      paper_bgcolor = "rgba(0,0,0,0)",
+      title = list(
+        text    = paste0("EU NUTS2 GDP Dispersion \u2013 ", year),
+        font    = list(size = 16, color = "#222"),
+        x       = 0.5, xanchor = "center"
+      ),
+      xaxis = list(
+        title = label_x, showline = TRUE, linecolor = "#bbb",
+        zeroline = FALSE, showgrid = FALSE, ticks = "outside", tickcolor = "#bbb"
+      ),
+      yaxis = list(
+        title = label_y, showline = TRUE, linecolor = "#bbb",
+        zeroline = FALSE, showgrid = TRUE,
+        gridcolor = "rgba(0,0,0,0.07)", gridwidth = 1,
+        ticks = "outside", tickcolor = "#bbb"
+      ),
+      legend = list(
+        orientation = "h", x = 1, y = -0.15,
+        xanchor = "right", yanchor = "top",
+        bgcolor = "rgba(255,255,255,1)", borderwidth = 0,
+        font = list(size = 12)
+      ),
+      margin   = list(l = 60, r = 20, t = 70, b = 110, pad = 4),
+      autosize = TRUE,
+      hovermode = "closest"
+    ) %>%
+    config(
+      responsive             = TRUE,
+      displayModeBar         = FALSE,
+      modeBarButtonsToRemove = list("lasso2d", "select2d"),
+      displaylogo            = FALSE
+    )
+}
+
+# ── Load full dataset into memory ─────────────────────────────────────────────
+# (needed for JS-driven filtering in static HTML)
+
+ds_full <- open_dataset("./data/gdp_eurostat_nuts2+0.parquet") %>%
+  filter(
+    var    %in% c("MIO_EUR", "MIO_PPS_EU27_2020",
+                  "EUR_HAB", "PPS_EU27_2020_HAB", "PPS_HAB_EU27_2020"),
+    nombre != "Extra-Regio NUTS 2"
+  ) %>%
+  collect()
+
+# ── Default parameters ────────────────────────────────────────────────────────
+default_year    <- YEAR_MAX
+default_varx    <- "MIO_PPS_EU27_2020"
+default_vary    <- "PPS_HAB_EU27_2020"
+default_country <- "ES"
+
+# ── Helper: build df_plot for a given combination ────────────────────────────
+make_df_plot <- function(year, varx, vary) {
+  ds_full %>%
+    filter(ano == year, var %in% c(varx, vary), level == 2L) %>%
+    pivot_wider(names_from = var, values_from = valor) %>%
+    mutate(
+      country = substr(code, 1, 2),
+      rankx   = rank(-get(varx), na.last = "keep", ties.method = "min"),
+      ranky   = rank(-get(vary),  na.last = "keep", ties.method = "min")
+    )
+}
+
+make_list_country <- function(year, varx, vary, country) {
+  ds_full %>%
+    filter(ano == year, var %in% c(varx, vary), code == country) %>%
+    pivot_wider(names_from = var, values_from = valor) %>%
+    select(any_of(c(varx, vary))) %>%
+    as.list()
+}
+
+make_list_eu <- function(year, varx, vary) {
+  ds_full %>%
+    filter(ano == year, var %in% c(varx, vary), code == "EU27_2020") %>%
+    pivot_wider(names_from = var, values_from = valor) %>%
+    select(any_of(c(varx, vary))) %>%
+    as.list()
+}
+
+# ── Precompute ALL combinations and serialise to JSON ─────────────────────────
+# Years × varx (2) × vary (3) × country (27) — rendered once, filtered in JS
+
+all_years    <- seq(YEAR_MIN, YEAR_MAX)
+all_varx     <- unname(VARS_X)      # "MIO_EUR", "MIO_PPS_EU27_2020"
+all_vary     <- unname(VARS_Y)      # 3 values
+all_countries <- unname(COUNTRIES)  # 27 ISO codes
+
+# Build a single wide data frame with all year×varx×vary combos (no country dim
+# needed — country is purely a visual highlight; the underlying points are the
+# same for a given year/varx/vary triplet).
+
+all_combos <- expand.grid(
+  year = all_years,
+  varx = all_varx,
+  vary = all_vary,
+  stringsAsFactors = FALSE
+)
+
+# For each combo compute the serialisable region rows
+combo_data <- lapply(seq_len(nrow(all_combos)), function(i) {
+  yr  <- all_combos$year[i]
+  vx  <- all_combos$varx[i]
+  vy  <- all_combos$vary[i]
+
+  df <- make_df_plot(yr, vx, vy)
+  if (!nrow(df)) return(NULL)
+
+  df %>%
+    mutate(country_name = country_names[country]) %>%
+    select(code, name, namelat, capital, country, country_name,
+           rankx, ranky,
+           vx_val = all_of(vx),
+           vy_val = all_of(vy))
+})
+names(combo_data) <- paste(all_combos$year, all_combos$varx,
+                           all_combos$vary, sep = "|")
+
+# EU reference values for every combo
+eu_data <- lapply(seq_len(nrow(all_combos)), function(i) {
+  yr <- all_combos$year[i]
+  vx <- all_combos$varx[i]
+  vy <- all_combos$vary[i]
+  eu <- make_list_eu(yr, vx, vy)
+  list(vx = eu[[vx]], vy = eu[[vy]])
+})
+names(eu_data) <- names(combo_data)
+
+# Country reference values: year × varx × vary × country
+country_combos <- expand.grid(
+  year    = all_years,
+  varx    = all_varx,
+  vary    = all_vary,
+  country = all_countries,
+  stringsAsFactors = FALSE
+)
+country_data <- lapply(seq_len(nrow(country_combos)), function(i) {
+  yr  <- country_combos$year[i]
+  vx  <- country_combos$varx[i]
+  vy  <- country_combos$vary[i]
+  ct  <- country_combos$country[i]
+  lc  <- make_list_country(yr, vx, vy, ct)
+  list(vx = lc[[vx]], vy = lc[[vy]])
+})
+names(country_data) <- paste(country_combos$year, country_combos$varx,
+                             country_combos$vary, country_combos$country, sep = "|")
+
+# Serialise to JSON (embedded in page)
+json_combo   <- jsonlite::toJSON(combo_data,   auto_unbox = TRUE, na = "null")
+json_eu      <- jsonlite::toJSON(eu_data,      auto_unbox = TRUE, na = "null")
+json_country <- jsonlite::toJSON(country_data, auto_unbox = TRUE, na = "null")
+```
+
+```{r ui, results='asis'}
+# ── Static HTML shell ─────────────────────────────────────────────────────────
+
+# Build country <option> list
+country_opts <- paste0(
+  mapply(function(name, iso) {
+    sel <- if (iso == default_country) " selected" else ""
+    sprintf('<option value="%s"%s>%s</option>', iso, sel, name)
+  }, names(COUNTRIES), unname(COUNTRIES)),
+  collapse = "\n"
+)
+
+# Year tick marks
+year_marks <- paste0(
+  '<datalist id="year-ticks">',
+  paste0(sprintf('<option value="%d"></option>', all_years), collapse = ""),
+  '</datalist>'
+)
+
+cat(sprintf('
+<div class="app-header">
+  <h1>&#127758; EU Regional GDP</h1>
+  <ul class="nav nav-tabs" id="mainTabs" role="tablist">
+    <li class="nav-item">
+      <a class="nav-link" href="#tab-nuts0" data-bs-toggle="tab">&#127758; NUTS0</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link active" href="#tab-nuts2" data-bs-toggle="tab">&#128200; NUTS2</a>
+    </li>
+  </ul>
+</div>
+
+<div class="tab-content">
+
+  <!-- NUTS0 placeholder -->
+  <div class="tab-pane fade" id="tab-nuts0">
+    <p style="color:#888;padding:24px;">NUTS0 content coming soon.</p>
+  </div>
+
+  <!-- NUTS2 -->
+  <div class="tab-pane fade show active" id="tab-nuts2">
+
+    <!-- Controls -->
+    <div class="controls-card">
+      <div class="controls-row">
+        <div>
+          <label for="sel-varx">GDP Var</label>
+          <select id="sel-varx" class="form-select form-select-sm">
+            <option value="MIO_EUR">M&euro; nominal</option>
+            <option value="MIO_PPS_EU27_2020" selected>M&euro; PPS 2020</option>
+          </select>
+        </div>
+        <div>
+          <label for="sel-vary">GDP p.c. Var</label>
+          <select id="sel-vary" class="form-select form-select-sm">
+            <option value="EUR_HAB">&euro; p.c.</option>
+            <option value="PPS_EU27_2020_HAB">PPS p.c.</option>
+            <option value="PPS_HAB_EU27_2020" selected>Index EU=100</option>
+          </select>
+        </div>
+        <div>
+          <label for="sel-country">Country</label>
+          <select id="sel-country" class="form-select form-select-sm">
+            %s
+          </select>
+        </div>
+      </div>
+      <div class="controls-row slider-row">
+        <div style="flex:1;">
+          <label for="sel-year">Year: <span id="year-label">%d</span></label>
+          <input type="range" id="sel-year" min="%d" max="%d" value="%d"
+                 step="1" list="year-ticks" style="width:100%%;">
+          %s
+        </div>
+      </div>
+    </div>
+
+    <!-- Value boxes -->
+    <div class="vboxes-row">
+      <div class="vbox" style="background:%s; color:white;">
+        <div class="vbox-icon">&#128506;</div>
+        <div class="vbox-content">
+          <div class="vbox-title">NUTS2 regions</div>
+          <div class="vbox-value" id="vb-regions">—</div>
+        </div>
+      </div>
+      <div class="vbox" style="background:%s; color:white;">
+        <div class="vbox-icon">&#127758;</div>
+        <div class="vbox-content">
+          <div class="vbox-title">EU avg GDP p.c.</div>
+          <div class="vbox-value" id="vb-eu-y">—</div>
+        </div>
+      </div>
+      <div class="vbox" style="background:%s; color:#222;">
+        <div class="vbox-icon">&#127987;</div>
+        <div class="vbox-content">
+          <div class="vbox-title">Country avg GDP p.c.</div>
+          <div class="vbox-value" id="vb-ct-y">—</div>
+        </div>
+      </div>
+      <div class="vbox" style="background:%s; color:#222;">
+        <div class="vbox-icon">&#127942;</div>
+        <div class="vbox-content">
+          <div class="vbox-title">Top GDP p.c. region</div>
+          <div class="vbox-value" id="vb-top" style="font-size:0.85rem;">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scatter plot -->
+    <div class="plot-card">
+      <div class="card-header-custom" id="plot-title-header">
+        GDP per capita vs GDP — %d
+      </div>
+      <div class="card-body-custom">
+        <div id="scatter-plot" style="width:100%%;height:520px;"></div>
+      </div>
+    </div>
+
+    <!-- Data table -->
+    <div class="table-card">
+      <div class="card-header-custom">Region data</div>
+      <div class="card-body-custom">
+        <table id="region-table" class="display hover compact" style="width:100%%"></table>
+      </div>
+    </div>
+
+  </div><!-- /tab-nuts2 -->
+</div><!-- /tab-content -->
+',
+  country_opts,
+  default_year, YEAR_MIN, YEAR_MAX, default_year,
+  year_marks,
+  PARA$col_other, PARA$col_eu_line, PARA$col_accent, PARA$col_country,
+  default_year
+))
+```
+
+```{r embed-data, results='asis', include=FALSE, eval=FALSE}
+# Embed all precomputed data + Plotly + DataTables JS logic
+cat(sprintf('
+<script>
+// ── Embedded data ─────────────────────────────────────────────────────────────
+const COMBO_DATA   = %s;
+const EU_DATA      = %s;
+const COUNTRY_DATA = %s;
+
+const VARS_X_MAP = {
+  "MIO_EUR":            "GDP (millions EUR)",
+  "MIO_PPS_EU27_2020":  "GDP (millions PPS 2020)"
+};
+const VARS_Y_MAP = {
+  "EUR_HAB":            "GDP per capita (EUR)",
+  "PPS_EU27_2020_HAB":  "GDP per capita (PPS 2020)",
+  "PPS_HAB_EU27_2020":  "GDP per capita index (EU=100)"
+};
+const COL_OTHER   = "%s";
+const COL_EU_LINE = "%s";
+const COL_COUNTRY = "%s";
+const COL_ACCENT  = "%s";
+const COL_ACCENT2 = "%s";
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function fmtNum(v, digits) {
+  if (v == null || isNaN(v)) return "N/A";
+  return Number(v).toLocaleString("en-US", {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits
+  });
+}
+
+function comboKey(year, varx, vary)          { return year+"|"+varx+"|"+vary; }
+function countryKey(year, varx, vary, country){ return year+"|"+varx+"|"+vary+"|"+country; }
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let currentVarx    = "MIO_PPS_EU27_2020";
+let currentVary    = "PPS_HAB_EU27_2020";
+let currentCountry = "ES";
+let currentYear    = %d;
+let dtTable        = null;
+
+// ── DataTable init (empty, filled on first render) ────────────────────────────
+function initDT() {
+  dtTable = $("#region-table").DataTable({
+    columns: [
+      { title: "Code",    className: "dt-center" },
+      { title: "Region" },
+      { title: "Country", className: "dt-center" },
+      { title: "Capital", className: "dt-center" },
+      { title: "Year",    className: "dt-center" },
+      { title: "GDP X" },
+      { title: "GDP Y" }
+    ],
+    pageLength : 15,
+    scrollX    : true,
+    dom        : "Bfrtip",
+    buttons    : [
+      { extend: "csv",   text: "CSV",   className: "btn-dt" },
+      { extend: "excel", text: "Excel", className: "btn-dt" }
+    ],
+    rowCallback: function(row, data, index) {
+      var color = (index %% 2 === 0) ? "#ffffff" : "#f8f8f8";
+      $(row).css("background-color", color);
+      $("td", row).css("background-color", color);
+    },
+    initComplete: function() {
+      $("a.btn-dt").css({
+        "background-color": COL_ACCENT,
+        "border-color"    : COL_ACCENT,
+        "color"           : "white",
+        "font-size"       : "0.8rem"
+      });
+    }
+  });
+}
+
+// ── Main render ───────────────────────────────────────────────────────────────
+function render() {
+  const year    = currentYear;
+  const varx    = currentVarx;
+  const vary    = currentVary;
+  const country = currentCountry;
+  const key     = comboKey(year, varx, vary);
+  const rows    = COMBO_DATA[key];
+
+  if (!rows || rows.length === 0) return;
+
+  const labelX = VARS_X_MAP[varx] || varx;
+  const labelY = VARS_Y_MAP[vary] || vary;
+
+  // ── Value boxes ──────────────────────────────────────────────────────────
+  document.getElementById("vb-regions").textContent = rows.length;
+
+  const euKey = key;
+  const eu    = EU_DATA[euKey] || {};
+  document.getElementById("vb-eu-y").textContent = fmtNum(eu.vy, 1);
+
+  const ctKey = countryKey(year, varx, vary, country);
+  const ct    = COUNTRY_DATA[ctKey] || {};
+  document.getElementById("vb-ct-y").textContent = fmtNum(ct.vy, 1);
+
+  // Top region
+  let topVal = -Infinity, topName = "N/A";
+  rows.forEach(r => {
+    if (r.vy_val != null && r.vy_val > topVal) {
+      topVal  = r.vy_val;
+      topName = r.name + " (" + fmtNum(r.vy_val, 1) + ")";
+    }
+  });
+  document.getElementById("vb-top").textContent = topName;
+
+  // ── Plot title ────────────────────────────────────────────────────────────
+  document.getElementById("plot-title-header").textContent =
+    labelY + " vs " + labelX + " \u2013 " + year;
+
+  // ── Scatter traces ────────────────────────────────────────────────────────
+  const otherNocap = rows.filter(r => r.country !== country && r.capital !== "Sí");
+  const otherCap   = rows.filter(r => r.country !== country && r.capital === "Sí");
+  const ctNocap    = rows.filter(r => r.country === country && r.capital !== "Sí");
+  const ctCap      = rows.filter(r => r.country === country && r.capital === "Sí");
+
+  const makeHover = d => d.name + " (" + d.code + ") [" + d.namelat + "]<br>" +
+    "Country: " + (d.country_name || d.country) + "<br>" +
+    labelX + ": " + fmtNum(d.vx_val, 0) + "<br>" +
+    "Ranking " + labelX + ": " + d.rankx + "<br>" +
+    labelY + ": " + fmtNum(d.vy_val, 1) + "<br>" +
+    "Ranking " + labelY + ": " + d.ranky;
+
+  const mkTrace = (subset, name, color, symbol, size, lrank) => ({
+    x: subset.map(r => r.vx_val),
+    y: subset.map(r => r.vy_val),
+    text: subset.map(makeHover),
+    type: "scatter", mode: "markers",
+    name, legendrank: lrank,
+    marker: { color, size, symbol, opacity: 1,
+               line: { width: 0.4, color } },
+    hoverinfo: "text",
+    hoverlabel: { bgcolor: color, font: { color: "white", size: 11 } }
+  });
+
+  const traces = [];
+  if (otherNocap.length) traces.push(mkTrace(otherNocap, "Other EU regions",     COL_OTHER,   "circle", 7, 4));
+  if (otherCap.length)   traces.push(mkTrace(otherCap,   "Other EU capitals",    COL_ACCENT,  "circle", 7, 3));
+  if (ctNocap.length)    traces.push(mkTrace(ctNocap,    "Other "+country+" regions", COL_COUNTRY, "circle", 7, 2));
+  if (ctCap.length) {
+    const capName = country + " Capital (" + (ctCap[0]||{}).code + ")";
+    traces.push(mkTrace(ctCap, capName, COL_COUNTRY, "square", 9, 1));
+  }
+
+  const layout = {
+    plot_bgcolor : "rgba(0,0,0,0)",
+    paper_bgcolor: "rgba(0,0,0,0)",
+    title: {
+      text: "EU NUTS2 GDP Dispersion \u2013 " + year,
+      font: { size: 16, color: "#222" }, x: 0.5, xanchor: "center"
+    },
+    xaxis: { title: labelX, showline: true, linecolor: "#bbb",
+             zeroline: false, showgrid: false, ticks: "outside", tickcolor: "#bbb" },
+    yaxis: { title: labelY, showline: true, linecolor: "#bbb",
+             zeroline: false, showgrid: true,
+             gridcolor: "rgba(0,0,0,0.07)", gridwidth: 1,
+             ticks: "outside", tickcolor: "#bbb" },
+    legend: { orientation: "h", x: 1, y: -0.15,
+              xanchor: "right", yanchor: "top",
+              bgcolor: "rgba(255,255,255,1)", borderwidth: 0,
+              font: { size: 12 } },
+    margin: { l: 60, r: 20, t: 70, b: 110, pad: 4 },
+    hovermode: "closest"
+  };
+
+  Plotly.react("scatter-plot", traces, layout, { responsive: true, displayModeBar: false });
+
+  // ── DataTable ─────────────────────────────────────────────────────────────
+  const tableRows = rows.map(r => [
+    r.code, r.name || r.namelat, r.country_name || r.country, r.capital, year,
+    r.vx_val == null ? "" : Number(r.vx_val).toFixed(0),
+    r.vy_val == null ? "" : Number(r.vy_val).toFixed(1)
+  ]);
+
+  // Sort by country then desc vy
+  tableRows.sort((a, b) => {
+    if (a[2] < b[2]) return -1;
+    if (a[2] > b[2]) return  1;
+    return parseFloat(b[6]) - parseFloat(a[6]);
+  });
+
+  if (dtTable) {
+    dtTable.clear().rows.add(tableRows).draw(false);
+    // Re-apply bar fill on y column (index 6)
+    const yVals = rows.map(r => r.vy_val).filter(v => v != null);
+    const yMax  = Math.max(...yVals);
+    dtTable.rows().every(function(idx) {
+      const node = this.node();
+      const td   = $("td:eq(6)", node);
+      const val  = parseFloat(td.text());
+      if (!isNaN(val) && yMax > 0) {
+        const pct = (val / yMax * 100).toFixed(1);
+        td.css({
+          "background": "linear-gradient(90deg, " + COL_ACCENT2 + " " + pct + "%%, transparent " + pct + "%%)",
+          "background-size": "100%% 90%%",
+          "background-repeat": "no-repeat",
+          "background-position": "center"
+        });
+      }
+    });
+    $("a.btn-dt").css({
+      "background-color": COL_ACCENT, "border-color": COL_ACCENT,
+      "color": "white", "font-size": "0.8rem"
+    });
+  }
+}
+
+// ── Bootstrap on DOM ready ────────────────────────────────────────────────────
+document.addEventListener("DOMContentLoaded", function() {
+  initDT();
+
+  // Year slider label
+  document.getElementById("sel-year").addEventListener("input", function() {
+    document.getElementById("year-label").textContent = this.value;
+    currentYear = parseInt(this.value);
+    render();
+  });
+
+  document.getElementById("sel-varx").addEventListener("change", function() {
+    currentVarx = this.value; render();
+  });
+  document.getElementById("sel-vary").addEventListener("change", function() {
+    currentVary = this.value; render();
+  });
+  document.getElementById("sel-country").addEventListener("change", function() {
+    currentCountry = this.value; render();
+  });
+
+  render(); // initial draw
+});
+</script>
+',
+  json_combo, json_eu, json_country,
+  PARA$col_other, PARA$col_eu_line, PARA$col_country,
+  PARA$col_accent, PARA$col_accent2,
+  default_year
+))
+```
